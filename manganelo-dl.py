@@ -23,7 +23,7 @@ def research():
     if not shores:
         for i in results:
             chapters = i.chapter_list()
-            print("{0}:\t{1};\t{2}\t{3}".format(j, i.title, i.authors, chapters[-1].chapter))
+            print("{0}:\t{1};\t{2}\t{3}\t\t{4}".format(j, i.title, i.authors, chapters[-1].chapter, i.rating))
             j += 1
             totresults.append(i)
     else:
@@ -50,3 +50,5 @@ if __name__ == "__main__":
         print("Please give an argument")
         exit(0)
     selman = input("Select a manga")
+
+    page = results[selman].manga_page
