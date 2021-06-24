@@ -1,10 +1,16 @@
 import os
 import sys
-from tqdm import tqdm
+# from tqdm import tqdm
+import progressbar
+from progressbar import ProgressBar
 from PyPDF2 import PdfFileWriter, PdfFileReader
+import re
+import shutil
+from progress.bar import Bar
 
 import manganelo.rewrite as manganelo
 
+# in the manganelo lib modify line 28 in chapterdownloader.py if you want to directly get the images and not the pdf
 """
 def rangechap():
     ranchap = x.split(x, "-")
@@ -51,8 +57,20 @@ def replace_all(text, dic):
     return text
 
 
-def getimages():
-    for i in result.chapter_list():
+def getimages(chapls):
+    print("Searching for chapters")
+    reschapls = result.chapter_list()
+    if not chapls:
+        i = 0
+        while i < len(reschapls):
+            chapls.append(i)
+            i += 1
+
+    reschapls2 = []
+    for i in chapls:
+        reschapls2.append(reschapls[i])
+
+    for i in reschapls2:
         d = {" ": "_",
              "  ": "_",
              "\\": "_",
@@ -71,13 +89,17 @@ def getimages():
         chappath = "{0}\\{1}.pdf".format(mangapath, str(cleantitle))
         print(chappath)
         i.download(path=chappath)
-        pdfmanagerdel(chappath)
+        # pdfmanagerdel(chappath)
+
+
+def ebookcreator():
+    print()
 
 
 def pdfmanagerdel(source):
-    pages_to_delete = [0, ]  # page numbering starts from 0
     infile = PdfFileReader(source, 'rb')
     output = PdfFileWriter()
+    pages_to_delete = [0, int(infile.getNumPages()) - 1]  # page numbering starts from 0
 
     for i in range(infile.getNumPages()):
         if i not in pages_to_delete:
@@ -86,6 +108,17 @@ def pdfmanagerdel(source):
 
     with open(source, 'wb') as f:
         output.write(f)
+
+
+def createpub():
+    print()
+
+
+def checkduplicates(lst):
+    if len(set(lst)) == len(lst):
+        print("success")
+    else:
+        print("duplicate found")
 
 
 if __name__ == "__main__":
@@ -98,6 +131,7 @@ if __name__ == "__main__":
     """)
     shores = False
     graphi = False
+    chapls = []
     # format manganelo-dl "Manga Name" 3 6-9 12 65
     if len(sys.argv) >= 2:
         print(str(sys.argv) + "\n")
@@ -106,6 +140,16 @@ if __name__ == "__main__":
             if x.startswith("-"):
                 if x == "-r":
                     shores = True
+            elif re.search("^[0-9]+.[0-9]+$", x):
+                chapr = x.split("-")
+                i = int(chapr[0])
+                while i <= int(chapr[-1]):
+                    chapls.append(i)
+                    i += 1
+                chapls = [int(j) for j in chapls]
+                chapls.sort()
+            elif re.search("^[0-9]+", x):
+                chapls.append(x)
             elif x != sys.argv[0]:
                 results = research()
     else:
@@ -114,7 +158,8 @@ if __name__ == "__main__":
     if shores:
         result = results[int(input("Select a manga:\t"))]
     else:
+        chapls = list(dict.fromkeys(chapls))
         result = results[0]
 
     rootpath, mangapath, ebookpath = folderpath()
-    getimages()
+    getimages(chapls)
