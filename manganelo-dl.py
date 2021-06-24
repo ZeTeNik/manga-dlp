@@ -12,6 +12,12 @@ import manganelo.rewrite as manganelo
 
 # in the manganelo lib modify line 28 in chapterdownloader.py if you want to directly get the images and not the pdf
 """
+	for i, url in enumerate(urls):
+			# remove ads
+			if url.endswith(".jpg"):
+"""
+
+"""
 def rangechap():
     ranchap = x.split(x, "-")
 
