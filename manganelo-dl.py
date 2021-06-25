@@ -1,16 +1,17 @@
 import os
 import sys
 # from tqdm import tqdm
-import progressbar
-from progressbar import ProgressBar
 from PyPDF2 import PdfFileWriter, PdfFileReader
 import re
-import shutil
-from progress.bar import Bar
-
+from time import sleep
+import platform
+from alive_progress import alive_bar
+from tabulate import tabulate
 import manganelo.rewrite as manganelo
 
 # in the manganelo lib modify line 28 in chapterdownloader.py if you want to directly get the images and not the pdf
+
+#line 48 in chapterdownloader.py
 """
 	for i, url in enumerate(urls):
 			# remove ads
@@ -31,30 +32,56 @@ def rangechap():
 
 
 def research():
-    results = manganelo.search(title=x)
+    results = manganelo.search(title=title)
 
     if shores:
         j = 0
+        print("{:<2} {:<72} {:<42} {:<11} {:<0}".format(' ', 'title', 'author(s)', 'chapter(s)', 'rating'))
         for i in results:
+            #results.title, results.author, results.rating = i
             chapters = i.chapter_list()
-            print("{0}:\t{1};\t{2}\t{3}\t\t{4}".format(j, i.title, i.authors, chapters[-1].chapter, i.rating))
+            #print("{:<0}: {:<1} {:<2} {:<3} {:<4}".format(j, i.title, i.authors, chapters[-1].chapter, i.rating))
+            print("{:<2} {:<72} {:<42} {:<11} {:<0}".format(int(j), str(i.title), str(i.authors), str(chapters[-1].chapter), str(i.rating)))
             j += 1
 
     return results
 
 
 def folderpath():
-    rootpath = os.path.dirname(os.path.realpath(__file__))
-    mangapath = str(rootpath) + "\\chapters\\" + str(result.title)
-    ebookpath = str(rootpath) + "\\ebook\\" + str(result.title)
+    rootpath = replace_all(os.path.dirname(os.path.realpath(__file__)), "path")
+    result.title = replace_all(str(result.title), "manga")
+    mangapath = "{1}{0}downloads{0}chapters{0}{2}".format(pathos, str(rootpath), str(result.title))
+    # mangapath = str(rootpath) + "\\downloads\\chapters\\" + str(result.title)
+    ebookpath = "{1}{0}downloads{0}ebook{0}{2}".format(pathos, str(rootpath), str(result.title))
+    # ebookpath = str(rootpath) + "\\downloads\\ebook\\" + str(result.title)
     if not os.path.isdir(mangapath):
         os.makedirs(mangapath)
+    if not os.path.isdir(ebookpath):
         os.makedirs(ebookpath)
 
     return rootpath, mangapath, ebookpath
 
 
 def replace_all(text, dic):
+    if dic == "path":
+        dic = {"/": pathos,
+               "\\": pathos,
+               "//": pathos}
+    elif dic == "manga":
+        dic = {" ": "_",
+               "  ": "_",
+               "\\": "_",
+               "/": "_",
+               ":": "_",
+               "*": "_",
+               "?": "_",
+               '"': "_",
+               "<": "_",
+               ">": "_",
+               "|": "_",
+               "____": "_",
+               "___": "_",
+               "__": "_"}
     for i, j in dic.items():
         text = text.replace(i, j)
         while text.endswith("_"):
@@ -64,7 +91,6 @@ def replace_all(text, dic):
 
 
 def getimages(chapls):
-    print("Searching for chapters")
     reschapls = result.chapter_list()
     if not chapls:
         i = 0
@@ -73,29 +99,24 @@ def getimages(chapls):
             i += 1
 
     reschapls2 = []
+    total = 0
     for i in chapls:
-        reschapls2.append(reschapls[i])
+        for x in reschapls:
+            if x.chapter == int(i):
+                reschapls2.append(x)
+                break
+        total += 1
+    print("start downloading {} ...".format(result.title))
+    with alive_bar(total) as bar:
+        for i in reschapls2:
+            cleantitle = replace_all(i.title, "manga")
+            chappath = "{1}{0}{2}.pdf".format(pathos, mangapath, str(cleantitle))
+            #print(chappath)
+            i.download(path=chappath)
+            pdfmanagerdel(chappath)
+            #bar().text(cleantitle)
+            bar()
 
-    for i in reschapls2:
-        d = {" ": "_",
-             "  ": "_",
-             "\\": "_",
-             "/": "_",
-             ":": "_",
-             "*": "_",
-             "?": "_",
-             '"': "_",
-             "<": "_",
-             ">": "_",
-             "|": "_",
-             "____": "_",
-             "___": "_",
-             "__": "_"}
-        cleantitle = replace_all(i.title, d)
-        chappath = "{0}\\{1}.pdf".format(mangapath, str(cleantitle))
-        print(chappath)
-        i.download(path=chappath)
-        # pdfmanagerdel(chappath)
 
 
 def ebookcreator():
@@ -128,41 +149,52 @@ def checkduplicates(lst):
 
 
 if __name__ == "__main__":
+    if platform.system() == "Windows":
+        pathos = "\\"
+    else:
+        os.system("clear")
+        pathos = "/"
     print("""
     ___    ___                              __               ____
    /  |   /  /__ ____  ___ ____ ____  ___ _/ /____  ________/ / /
   /  /|__/  / _ `/ _ \/ _ `/ _ `/ _ \/ _ `/ __/ _ \/____/ _  / / 
  /__/   /__/\_,_/_//_/\_, /\_,_/_//_/\_,_/\__/\___/     \_,_/_/  
-    using manganelo  /___/  unofficial API
+    using manganelo  /___/  unofficial API\n
     """)
     shores = False
     graphi = False
     chapls = []
+    title = ""
+    requ = input("manganato-dl$ ")
     # format manganelo-dl "Manga Name" 3 6-9 12 65
-    if len(sys.argv) >= 2:
-        print(str(sys.argv) + "\n")
+    #if len(sys.argv) >= 2:
+        #print(str(sys.argv) + "\n")
 
-        for x in sys.argv:
-            if x.startswith("-"):
-                if x == "-r":
-                    shores = True
-            elif re.search("^[0-9]+.[0-9]+$", x):
-                chapr = x.split("-")
-                i = int(chapr[0])
-                while i <= int(chapr[-1]):
-                    chapls.append(i)
-                    i += 1
-                chapls = [int(j) for j in chapls]
-                chapls.sort()
-            elif re.search("^[0-9]+", x):
-                chapls.append(x)
-            elif x != sys.argv[0]:
-                results = research()
-    else:
-        print("Please give an argument")
-        exit(0)
+    for x in requ.split(" "):
+        if x == "exit":
+            exit(0)
+        elif x.startswith("-"):
+            if x == "-r":
+                shores = True
+        elif re.search("^[0-9]+.[0-9]+$", x):
+            chapr = x.split("-")
+            i = int(chapr[0])
+            while i <= int(chapr[-1]):
+                chapls.append(i)
+                i += 1
+            chapls = [int(j) for j in chapls]
+            chapls.sort()
+        elif re.search("^[0-9]+", x):
+            chapls.append(x)
+        elif re.search("[a-z]*[:space:]*[A-Z]*", x):
+            title = "{0} {1}".format(title, x)
+
+    results = research()
+    #else:
+    #    print("Please give an argument")
+    #    exit(0)
     if shores:
-        result = results[int(input("Select a manga:\t"))]
+        result = results[int(input("\nSelect a manga:\t"))]
     else:
         chapls = list(dict.fromkeys(chapls))
         result = results[0]
