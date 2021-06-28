@@ -1,5 +1,6 @@
 import os
 import sys
+from threading import Thread
 # from tqdm import tqdm
 from PyPDF2 import PdfFileWriter, PdfFileReader
 import re
@@ -9,9 +10,14 @@ from alive_progress import alive_bar
 from tabulate import tabulate
 import manganelo.rewrite as manganelo
 
+shores: bool = False
+graphi = False
+chapls = []
+title = ""
+
 # in the manganelo lib modify line 28 in chapterdownloader.py if you want to directly get the images and not the pdf
 
-#line 48 in chapterdownloader.py
+# line 48 in chapterdownloader.py
 """
 	for i, url in enumerate(urls):
 			# remove ads
@@ -38,10 +44,15 @@ def research():
         j = 0
         print("{:<2} {:<72} {:<42} {:<11} {:<0}".format(' ', 'title', 'author(s)', 'chapter(s)', 'rating'))
         for i in results:
-            #results.title, results.author, results.rating = i
+            # results.title, results.author, results.rating = i
             chapters = i.chapter_list()
-            #print("{:<0}: {:<1} {:<2} {:<3} {:<4}".format(j, i.title, i.authors, chapters[-1].chapter, i.rating))
-            print("{:<2} {:<72} {:<42} {:<11} {:<0}".format(int(j), str(i.title), str(i.authors), str(chapters[-1].chapter), str(i.rating)))
+            # print("{:<0}: {:<1} {:<2} {:<3} {:<4}".format(j, i.title, i.authors, chapters[-1].chapter, i.rating))
+            try:
+                print("{:<2} {:<72} {:<42} {:<11} {:<0}".format(int(j), str(i.title), str(i.authors),
+                                                                str(chapters[-1].chapter), i.rating))
+            except:
+                print("{:<2} {:<72} {:<42} {:<11} {:<0}".format(int(j), str(i.title), "None found",
+                                                                str(chapters[-1].chapter), i.rating))
             j += 1
 
     return results
@@ -107,16 +118,16 @@ def getimages(chapls):
                 break
         total += 1
     print("start downloading {} ...".format(result.title))
-    with alive_bar(total) as bar:
+    with alive_bar(total, spinner="message_bouncing") as bar:
         for i in reschapls2:
             cleantitle = replace_all(i.title, "manga")
-            chappath = "{1}{0}{2}.pdf".format(pathos, mangapath, str(cleantitle))
-            #print(chappath)
+            chappath = "{0}{1}{2}.pdf".format(mangapath, pathos, str(cleantitle))
+            # print(chappath)
             i.download(path=chappath)
             pdfmanagerdel(chappath)
-            #bar().text(cleantitle)
+            # bar().text(cleantitle)
+            memory(mangapath, manganelo.manga_page(url=str(i.url)))
             bar()
-
 
 
 def ebookcreator():
@@ -148,6 +159,10 @@ def checkduplicates(lst):
         print("duplicate found")
 
 
+def memory(chappath, info_manga):
+    print()
+
+
 if __name__ == "__main__":
     if platform.system() == "Windows":
         pathos = "\\"
@@ -161,21 +176,20 @@ if __name__ == "__main__":
  /__/   /__/\_,_/_//_/\_, /\_,_/_//_/\_,_/\__/\___/     \_,_/_/  
     using manganelo  /___/  unofficial API\n
     """)
-    shores = False
-    graphi = False
-    chapls = []
-    title = ""
     requ = input("manganato-dl$ ")
     # format manganelo-dl "Manga Name" 3 6-9 12 65
-    #if len(sys.argv) >= 2:
-        #print(str(sys.argv) + "\n")
+    # if len(sys.argv) >= 2:
+    # print(str(sys.argv) + "\n")
+    args = requ.split(" ")
 
-    for x in requ.split(" "):
+    for x in args:
         if x == "exit":
             exit(0)
         elif x.startswith("-"):
             if x == "-r":
                 shores = True
+            elif x.startswith("-f"):
+                form = args[args.index(x) + 1]
         elif re.search("^[0-9]+.[0-9]+$", x):
             chapr = x.split("-")
             i = int(chapr[0])
@@ -186,15 +200,18 @@ if __name__ == "__main__":
             chapls.sort()
         elif re.search("^[0-9]+", x):
             chapls.append(x)
-        elif re.search("[a-z]*[:space:]*[A-Z]*", x):
+        elif x == args[-1]:
             title = "{0} {1}".format(title, x)
+        # elif re.search("[a-z]*[:space:]*[A-Z]*", x):
+        #    title = "{0} {1}".format(title, x)
 
     results = research()
-    #else:
+    # else:
     #    print("Please give an argument")
     #    exit(0)
     if shores:
         result = results[int(input("\nSelect a manga:\t"))]
+
     else:
         chapls = list(dict.fromkeys(chapls))
         result = results[0]
